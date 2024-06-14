@@ -14,8 +14,15 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { sampleJobDescription } from "@/lib/utils"
 import { useRouter } from 'next/navigation';
+import { Session } from 'next-auth';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL!
+
+interface UserDetails {
+    aiKeyUsage?: number;
+    name?: string;
+    email?: string;
+}
 
 export default function Component() {
     const [jobDescription, setJobDescription] = useState<string>("")
@@ -28,11 +35,15 @@ export default function Component() {
     const [isKeySavedLocally, setIsKeySavedLocally] = useState<boolean>(localStorage.getItem('openai-api-key') !== null)
     const [useSampleDescription, setUseSampleDescription] = useState<boolean>(false)
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const { data: session, status: sessionStatus } = useSession();
-    const [userDetails, setUserDetails] = useState(null);
+    const { data: session, status: sessionStatus } = useSession() as { data: CustomSession | null, status: 'loading' | 'authenticated' | 'unauthenticated' };;
+    const [userDetails, setUserDetails] = useState<UserDetails[] | null>(null);
     const sampleDescription = sampleJobDescription
 
     const router = useRouter();
+
+    interface CustomSession extends Session {
+        loggedUser?: string;
+    }
 
     useEffect(() => {
         if (!session) {
@@ -44,9 +55,12 @@ export default function Component() {
         const fetchUserDetails = async () => {
             if (session && session.user) {
                 try {
-                    const response = await fetch(`${BACKEND_URL}/users/?${session.user.email}`);
+                    const response = await fetch(`${BACKEND_URL}/users/?${session.user.email}`, {
+                        headers: {
+                            'Authorization': `Bearer ${session?.loggedUser}`
+                        }
+                    });
                     const data = await response.json();
-                    console.log(data)
                     setUserDetails(data);
                 } catch (error) {
                     console.error("Error fetching user details", error);
@@ -195,8 +209,19 @@ export default function Component() {
                                         <Label htmlFor="openai-api-key" className="text-gray-600">Save OpenAI Key Locally</Label>
                                     </div>
                                 </div>
+                                {userDetails?.[0]?.aiKeyUsage  === 0 && !openAIApiKey && (
+                                    <div
+                                        className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative dark:bg-red-900 dark:border-red-600 dark:text-red-400"
+                                        role="alert"
+                                    >
+                                        <strong className="font-bold">Error:</strong>{" "}
+                                        <span className="block sm:inline">
+                                            Your free Precise usage limit has been reached. Please use your own API key.
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="space-y-2 md:space-y-0 md:space-x-2 flex flex-col md:flex-row">
-                                    <Button className="dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600 w-full md:w-auto" disabled={!jobDescription || !selectedFile || !openAIApiKey}>
+                                    <Button className="dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600 w-full md:w-auto" disabled={!jobDescription || !selectedFile || (!(openAIApiKey || (userDetails?.[0]?.aiKeyUsage ?? 0) > 0))}>
                                         <Sparkles className="h-4 w-4 mr-2" />
                                         Precise Generation
                                     </Button>
