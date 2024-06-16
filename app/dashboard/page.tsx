@@ -1,17 +1,15 @@
 "use client"
-import { useState, ChangeEvent, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import Menu from "@/components/StickyMenu"
 import { useSession } from 'next-auth/react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { BotIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, FilePenIcon, LayoutDashboardIcon, LayoutTemplateIcon, MountainIcon, SettingsIcon, ShareIcon, Sparkles, Zap } from "lucide-react"
+import { ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, Copy, CopyIcon, DownloadIcon, FileIcon, FilePenIcon, LayoutDashboardIcon, LayoutTemplateIcon, MailPlus, MountainIcon, SettingsIcon, ShareIcon, Sparkles, Zap } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
-import { Separator } from "@/components/ui/separator"
 import { sampleJobDescription } from "@/lib/utils"
 import { useRouter } from 'next/navigation';
 import { Session } from 'next-auth';
@@ -24,26 +22,45 @@ interface UserDetails {
     email?: string;
 }
 
+interface CustomSession extends Session {
+    loggedUser?: string;
+}
+
+interface Template {
+    body: string;
+}
+
 export default function Component() {
     const [jobDescription, setJobDescription] = useState<string>("")
-    const [generationMode, setGenerationMode] = useState<"ai" | "manual">("ai")
-    const [emailTemplates, setEmailTemplates] = useState<string[]>(["", "", ""])
+    const [preciseEmailTemplates, setPreciseEmailTemplates] = useState<string[]>(["", "", ""]);
+    const [rapidEmailTemplates, setRapidEmailTemplates] = useState<string[]>(["", "", ""]);
     const [openAIApiKey, setOpenAIApiKey] = useState<string>("")
     const [openAIApiKeyError, setOpenAIApiKeyError] = useState<boolean>(false)
-    const [freeAIGenerations, setFreeAIGenerations] = useState<number>(3)
     const [isMenuExpanded, setIsMenuExpanded] = useState<boolean>(false)
     const [isKeySavedLocally, setIsKeySavedLocally] = useState<boolean>(localStorage.getItem('openai-api-key') !== null)
     const [useSampleDescription, setUseSampleDescription] = useState<boolean>(false)
+    const [aiKeyUsage, setAiKeyUsage] = useState<number>(0)
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const { data: session, status: sessionStatus } = useSession() as { data: CustomSession | null, status: 'loading' | 'authenticated' | 'unauthenticated' };;
-    const [userDetails, setUserDetails] = useState<UserDetails[] | null>(null);
+    const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
+    const [triggerFetchUserDetails, setTriggerFetchUserDetails] = useState(false);
     const sampleDescription = sampleJobDescription
+
+
+    useEffect(() => {
+        if (triggerFetchUserDetails) {
+            fetchUserDetails().then(() => setTriggerFetchUserDetails(false));
+        }
+    }, [triggerFetchUserDetails]);
 
     const router = useRouter();
 
-    interface CustomSession extends Session {
-        loggedUser?: string;
-    }
+    useEffect(() => {
+        const storedKey = localStorage.getItem('openai-api-key')
+        if (storedKey) {
+            setOpenAIApiKey(storedKey)
+        }
+    }, [])
 
     useEffect(() => {
         if (!session) {
@@ -52,44 +69,34 @@ export default function Component() {
     }, [session, sessionStatus, router]);
 
     useEffect(() => {
-        const fetchUserDetails = async () => {
-            if (session && session.user) {
-                try {
-                    const response = await fetch(`${BACKEND_URL}/users/?${session.user.email}`, {
-                        headers: {
-                            'Authorization': `Bearer ${session?.loggedUser}`
-                        }
-                    });
-                    const data = await response.json();
-                    setUserDetails(data);
-                } catch (error) {
-                    console.error("Error fetching user details", error);
-                }
-            }
-        };
-
         fetchUserDetails();
     }, [session]);
 
+    const fetchUserDetails = async () => {
+        if (session && session.user) {
+            try {
+                const response = await fetch(`${BACKEND_URL}/users/?${session.user.email}`, {
+                    headers: {
+                        'Authorization': `Bearer ${session?.loggedUser}`
+                    }
+                });
+                const data = await response.json();
+                console.log(data[0]?.aiKeyUsage)
+                setAiKeyUsage(data[0]?.aiKeyUsage)
+            } catch (error) {
+                console.error("Error fetching user details", error);
+            }
+        }
+    };
 
     const handleJobDescriptionChange = (value: string) => {
         setJobDescription(value)
-    }
-
-    const handleGenerationModeChange = (mode: "ai" | "manual") => {
-        setGenerationMode(mode)
-        if (mode === "manual") {
-            setEmailTemplates(["", "", ""])
-        } else {
-            generateAITemplates()
-        }
     }
 
     const handleOpenAIApiKeyChange = (value: string) => {
         setOpenAIApiKey(value)
         setOpenAIApiKeyError(false)
     }
-
 
     const handleSaveKeyLocallyChange = (checked: boolean) => {
         setIsKeySavedLocally(checked)
@@ -109,46 +116,90 @@ export default function Component() {
         }
     }
 
-    const handleEmailTemplateChange = (index: number, value: string) => {
-        setEmailTemplates((prevTemplates) => {
-            const updatedTemplates = [...prevTemplates]
-            updatedTemplates[index] = value
-            return updatedTemplates
-        })
-    }
+    const handlePreciseTemplateChange = (index: number, newValue: string) => {
+        setPreciseEmailTemplates(prevTemplates => {
+            const newTemplates = [...prevTemplates];
+            newTemplates[index] = newValue;
+            return newTemplates;
+        });
+    };
 
-    const handleGenerateTemplate = () => {
-        if (generationMode === "ai") {
-            if (openAIApiKey) {
-                generateAITemplates()
-            } else if (freeAIGenerations > 0) {
-                generateAITemplates()
-                setFreeAIGenerations(freeAIGenerations - 1)
-            } else {
-                setOpenAIApiKeyError(true)
+    const handleRapidTemplateChange = (index: number, newValue: string) => {
+        setRapidEmailTemplates(prevTemplates => {
+            const newTemplates = [...prevTemplates];
+            newTemplates[index] = newValue;
+            return newTemplates;
+        });
+    };
+
+    const updateAiKeyUsage = async (): Promise<void> => {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const userEmail = session?.user?.email;
+                if (!userEmail) {
+                    console.error("User email not found in session");
+                    reject("User email not found in session");
+                    return;
+                }
+
+                const response = await fetch(`${BACKEND_URL}/users/updateAiKeyUsage`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session?.loggedUser}`
+                    },
+                    body: JSON.stringify({ userEmail })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update AI key usage');
+                }
+                resolve();
+            } catch (error) {
+                console.error("Error updating AI key usage:", error);
+                reject(error);
             }
+        });
+    };
+
+    const handleGenerateEmailTemplates = async () => {
+        if (!selectedFile || !jobDescription) {
+            console.error("File or job description is missing");
+            return;
         }
-    }
 
-    const generateAITemplates = () => {
-        const generatedTemplates = generateTemplatesFromAI(jobDescription, openAIApiKey)
-        setEmailTemplates(generatedTemplates)
-    }
-
-    const generateTemplatesFromAI = (description: string, apiKey: string): string[] => {
-        return [
-            `Dear Hiring Manager,\n\nI am excited to apply for the [Job Title] position at [Company Name]. With my [Relevant Experience], I believe I am an excellent fit for this role.\n\nI am passionate about [Relevant Passion] and have a proven track record of [Relevant Accomplishments]. I am confident that I can contribute to your team and help [Company Name] achieve its goals.\n\nThank you for considering my application. I look forward to the opportunity to discuss my qualifications further.\n\nBest regards,\n[Your Name]`,
-            `Hello [Hiring Manager's Name],\n\nI hope this email finds you well. I am writing to express my strong interest in the [Job Title] position at [Company Name].\n\nWith my [Relevant Experience], I am confident that I can make a valuable contribution to your team. I am particularly excited about the opportunity to [Relevant Passion] and leverage my skills in [Relevant Skills] to help [Company Name] [Relevant Goal].\n\nI would welcome the chance to discuss my qualifications in more detail. Please let me know if you have any questions or if there is any additional information I can provide.\n\nThank you for your consideration. I look forward to hearing from you.\n\nBest regards,\n[Your Name]`,
-            `Subject: Exciting Opportunity at [Company Name]\n\nDear [Hiring Manager's Name],\n\nI hope this email finds you well. I am writing to express my strong interest in the [Job Title] position at [Company Name].\n\nWith my extensive experience in [Relevant Experience], I am confident that I can make a significant contribution to your team. I am particularly excited about the opportunity to [Relevant Passion] and leverage my skills in [Relevant Skills] to help [Company Name] [Relevant Goal].\n\nI would welcome the chance to discuss my qualifications in more detail. Please let me know if you have any questions or if there is any additional information I can provide.\n\nThank you for your consideration. I look forward to hearing from you.\n\nBest regards,\n[Your Name]`,
-        ]
-    }
-
-    useEffect(() => {
-        const storedKey = localStorage.getItem('openai-api-key')
-        if (storedKey) {
-            setOpenAIApiKey(storedKey)
+        const formData = new FormData();
+        formData.append('resume', selectedFile);
+        formData.append('jobDescription', jobDescription);
+        if (openAIApiKey) {
+            formData.append('apiKey', openAIApiKey);
         }
-    }, [])
+
+        try {
+            const response = await fetch(`${BACKEND_URL}/resume/upload`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Authorization': `Bearer ${session?.loggedUser}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to generate email templates');
+            }
+
+            const data = await response.json();
+            await updateAiKeyUsage();
+            setTriggerFetchUserDetails(true);
+
+            const contentWithoutBackticks = data.emailTemplate.message.content.replace(/```json\n|\n```/g, '');
+            const templates = JSON.parse(contentWithoutBackticks);
+            console.log(templates)
+            setPreciseEmailTemplates(templates.map((template: Template) => template.body));
+        } catch (error) {
+            console.error("Error generating email templates:", error);
+        }
+    };
 
     return (
         <div className="flex w-full h-full">
@@ -209,7 +260,7 @@ export default function Component() {
                                         <Label htmlFor="openai-api-key" className="text-gray-600">Save OpenAI Key Locally</Label>
                                     </div>
                                 </div>
-                                {userDetails?.[0]?.aiKeyUsage  === 0 && !openAIApiKey && (
+                                {aiKeyUsage === 0 && !openAIApiKey && (
                                     <div
                                         className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative dark:bg-red-900 dark:border-red-600 dark:text-red-400"
                                         role="alert"
@@ -221,7 +272,7 @@ export default function Component() {
                                     </div>
                                 )}
                                 <div className="space-y-2 md:space-y-0 md:space-x-2 flex flex-col md:flex-row">
-                                    <Button className="dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600 w-full md:w-auto" disabled={!jobDescription || !selectedFile || (!(openAIApiKey || (userDetails?.[0]?.aiKeyUsage ?? 0) > 0))}>
+                                    <Button className="dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600 w-full md:w-auto" disabled={!jobDescription || !selectedFile || (!openAIApiKey && (aiKeyUsage === 0))} onClick={handleGenerateEmailTemplates}>
                                         <Sparkles className="h-4 w-4 mr-2" />
                                         Precise Generation
                                     </Button>
@@ -238,33 +289,72 @@ export default function Component() {
                             <CardTitle>Customize Email Templates</CardTitle>
                             <CardDescription>Review the generated email templates and make any necessary changes.</CardDescription>
                         </CardHeader>
-                        <CardContent className="max-h-[400px] overflow-auto">
+                        <CardContent className="max-h-[500px] overflow-auto">
                             <div className="space-y-4  w-full">
-
                                 <Tabs defaultValue="ai" className="">
                                     <TabsList className="w-full flex justify-evenly">
                                         <TabsTrigger value="ai" className="w-full"> <Sparkles className="h-4 w-4 mr-2" /> Precise </TabsTrigger>
                                         <TabsTrigger value="manual" className="w-full"> <Zap className="h-4 w-4 mr-2" /> Rapid </TabsTrigger>
                                     </TabsList>
                                     <TabsContent value="ai">
-                                        {emailTemplates.map((template, index) => (
-                                            <div key={index} className="space-y-2">
+                                        {preciseEmailTemplates.map((template, index) => (
+                                            <div key={index} className="space-y-2 border rounded-lg mt-3">
+                                                <header className="bg-gray-100 px-4 flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <FileIcon className="h-5 w-5 text-gray-500" />
+                                                        <span className="text-sm font-medium">{`Template ${index + 1}`}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Button onClick={() => navigator.clipboard.writeText(template)} variant="ghost" size="icon" className="text-gray-500 hover:text-gray-700">
+                                                            <CopyIcon className="h-5 w-5" />
+                                                            <span className="sr-only">Copy text</span>
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-700">
+                                                            <ShareIcon className="h-5 w-5" />
+                                                            <span className="sr-only">Share text</span>
+                                                        </Button>
+                                                        <a href={`data:text/plain;charset=utf-8,${encodeURIComponent(template)}`} download={`template_${index + 1}.txt`} className="text-gray-500 hover:text-gray-700">
+                                                            <DownloadIcon className="h-5 w-5" />
+                                                            <span className="sr-only">Download text</span>
+                                                        </a>
+                                                    </div>
+                                                </header>
                                                 <Textarea
-                                                    className="min-h-[300px] resize-none space-y-2 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
+                                                    className="min-h-[300px] resize-none dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
                                                     placeholder={`Template ${index + 1}`}
                                                     value={template}
-                                                    onChange={(e) => handleEmailTemplateChange(index, e.target.value)}
+                                                    onChange={(e) => handlePreciseTemplateChange(index, e.target.value)}
                                                 />
                                             </div>
                                         ))}
                                     </TabsContent>
-                                    <TabsContent value="manual">{emailTemplates.map((template, index) => (
-                                        <div key={index} className="space-y-2">
+                                    <TabsContent value="manual">{rapidEmailTemplates.map((template, index) => (
+                                        <div key={index} className="space-y-2 border rounded-lg mt-3">
+                                            <header className="bg-gray-100 px-4 flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <FileIcon className="h-5 w-5 text-gray-500" />
+                                                    <span className="text-sm font-medium">{`Template ${index + 1}`}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Button onClick={() => navigator.clipboard.writeText(template)} variant="ghost" size="icon" className="text-gray-500 hover:text-gray-700">
+                                                        <CopyIcon className="h-5 w-5" />
+                                                        <span className="sr-only">Copy text</span>
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-700">
+                                                        <ShareIcon className="h-5 w-5" />
+                                                        <span className="sr-only">Share text</span>
+                                                    </Button>
+                                                    <a href={`data:text/plain;charset=utf-8,${encodeURIComponent(template)}`} download={`template_${index + 1}.txt`} className="text-gray-500 hover:text-gray-700">
+                                                        <DownloadIcon className="h-5 w-5" />
+                                                        <span className="sr-only">Download text</span>
+                                                    </a>
+                                                </div>
+                                            </header>
                                             <Textarea
-                                                className="min-h-[300px] resize-none dark:bg-gray-700 space-y-2 dark:text-gray-300 dark:border-gray-600"
+                                                className="min-h-[300px] resize-none  dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
                                                 placeholder={`Template ${index + 1}`}
                                                 value={template}
-                                                onChange={(e) => handleEmailTemplateChange(index, e.target.value)}
+                                                onChange={(e) => handlePreciseTemplateChange(index, e.target.value)}
                                             />
                                         </div>
                                     ))}</TabsContent>
