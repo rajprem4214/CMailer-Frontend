@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-
+import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
     title: "CMailer",
@@ -14,6 +14,7 @@ export default function RootLayout({
     return (
         <div>
             {children}
+            <Toaster />
         </div>
     );
 }

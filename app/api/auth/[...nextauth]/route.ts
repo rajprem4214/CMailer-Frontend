@@ -40,7 +40,7 @@ export const authOptions: NextAuthOptions = {
 
                 if (!existingUser) {
                     // If the user doesn't exist, create a new record
-                    existingUser = await UserModel.create({ name, email, aiKeyUsage: 3 });
+                    existingUser = await UserModel.create({ name, email, aiKeyUsage: 0 });
                 } else {
                     // If the user exists, update the record
                     existingUser.name = name;
