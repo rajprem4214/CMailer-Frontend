@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
-## Getting Started
+# CMailer
 
-First, run the development server:
+Are you struggling to craft personalized cold emails for job applications? Do you need a tool that can generate effective email templates from your resume?
+
+Do not worry; we have you covered. We now present **CMailer**.  
+
+**CMailer** is a platform that helps you generate personalized cold email templates using your resume and job description. It uses advanced AI technology to create precise and rapid email templates tailored to your needs.
+
+To get started, simply upload your resume and provide a job description. CMailer will generate multiple email templates that you can customize and use for your job applications.
+
+Built with the help of **OpenAI's GPT-4** and other modern technologies, CMailer ensures high-quality and effective email templates.
+
+Want to generate personalized cold emails? Just upload your resume and job description, and you are good to go.
+
+## Demo
+
+[Video Link](https://x.com/premcodes/status/1803509230600855857)
+
+## Meet Glance
+
+<img src="https://github.com/rajprem4214/CMailer-Frontend/assets/85401522/8949011c-e7a5-45b5-b066-b70a6d16ef1f" alt="HomePage" border="0" >
+<img src="https://github.com/rajprem4214/CMailer-Frontend/assets/85401522/9468e55d-5b89-4cd3-8007-eb0681cf2dfa" alt="HomePage" border="0" >
+
+
+
+
+## Features
+
+- Upload and parse resumes
+- Extract keywords and important information
+- Generate cold emails for recruiters
+- Send emails via Gmail integration
+
+## TechStack
+
+- NextJs
+- NodeJs
+- ExpressJs
+- MongoDB
+- OpenAI
+- Python
+- Flask
+- Parser
+
+
+### Clone the project
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+  git clone https://github.com/rajprem4214/CMailer-Frontend.git
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Install all dependencies
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+ npm install
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+Start frontend server
 
-## Learn More
+```bash
+ npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+# Future Aspects
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+- [ ] Add a feature to send emails to multiple recipients at once.
+- [ ] Improve the UI/UX of the application.
+- [ ] Add a feature to save generated emails to the user's account.
+- [ ] Add a feature to send emails via the application.
